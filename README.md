@@ -94,5 +94,7 @@ No license has been specified yet. All rights are reserved by the copyright hold
 Developed as an independent Android application project.
 
 ---
+**Made With kotlin, Codex, Antigravity and 
+Love**
 
 **AudioBox — Your music, your experience.** 🎧
