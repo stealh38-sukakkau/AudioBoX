@@ -9,8 +9,10 @@ AudioBox is an Android music player project focused on a clean, modern listening
 
 ## ✨ Features
 
-- 🎵 Music player interface built with Jetpack Compose.
+- 🎵 Music playback interface built with Jetpack Compose.
 - 🎨 Modern UI inspired by Apple Music.
+- 📝 Lyrics integration.
+- 🖥️ Jellyfin integration for music and media access.
 - 📱 Native Android application.
 - 📦 Signed APK available for installation.
 
@@ -32,6 +34,21 @@ AudioBox is an Android music player project focused on a clean, modern listening
 5. Launch AudioBox.
 
 If Android asks for permission to install apps from your browser or file manager, allow it only for the app you are using to install AudioBox.
+
+### ⚠️ Google Play Protect Notice
+
+When installing AudioBox, Google Play Protect may display a warning or block the installation because the APK is distributed outside Google Play.
+
+This warning does not necessarily mean that the app contains malware. However, it is not proof that the APK is safe either.
+
+**Before proceeding:**
+- Make sure you downloaded `app-release.apk` from the official [AudioBox GitHub Releases](https://github.com/stealh38-sukakkau/AudioBoX/releases) page.
+- Review the source code if you are comfortable doing so.
+- Only proceed if you trust the source and understand the warning.
+
+If Android offers an option to continue, follow the on-screen instructions only after reviewing the warning. If Play Protect explicitly blocks the installation, do not bypass the block unless the APK has been independently verified as safe.
+
+Your device's security is important. 🎧
 
 ## ⚠️ Known Issues
 
