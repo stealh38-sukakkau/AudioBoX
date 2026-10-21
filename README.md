@@ -50,9 +50,7 @@ If Android offers an option to continue, follow the on-screen instructions only 
 
 Your device's security is important. 🎧
 
-## ⚠️ Known Issues
-
-- The Now Playing interface may return to the initial track after navigating between tracks and reopening the app.
+- 
 
 These issues may be addressed in future updates.
 
