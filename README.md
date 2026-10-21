@@ -4,8 +4,8 @@
 
 AudioBox is an Android music player project focused on a clean, modern listening experience, with a user interface inspired by Apple Music.
 
-> **Current version:** v1.0.0  
-> **Status:** Initial release
+> **Current version:** v1.0.1  
+> **Status:** Release
 
 ## ✨ Features
 
