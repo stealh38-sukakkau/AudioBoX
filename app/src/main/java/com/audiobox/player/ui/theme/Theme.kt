@@ -26,16 +26,16 @@ fun AudioboxTheme(
     val scheme = if (isLight) {
         lightColorScheme(
             primary = AudioboxAccent, secondary = AudioboxSecondary,
-            background = DarkBackground, surface = DarkSurface,
-            onPrimary = TextPrimary, onSecondary = TextPrimary,
-            onBackground = TextPrimary, onSurface = TextPrimary
+            background = Color(0xFFF7F7F8), surface = Color.White,
+            onPrimary = Color.White, onSecondary = Color.White,
+            onBackground = Color(0xFF17171B), onSurface = Color(0xFF17171B)
         )
     } else {
         darkColorScheme(
             primary = AudioboxAccent, secondary = AudioboxSecondary,
-            background = DarkBackground, surface = DarkSurface,
-            onPrimary = TextPrimary, onSecondary = TextPrimary,
-            onBackground = TextPrimary, onSurface = TextPrimary
+            background = Color(0xFF000000), surface = Color(0xFF121212),
+            onPrimary = Color.White, onSecondary = Color.White,
+            onBackground = Color.White, onSurface = Color.White
         )
     }
     if (!view.isInEditMode) {

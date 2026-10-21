@@ -217,6 +217,15 @@ class JellyfinRepository(
             it.album.contains(query, ignoreCase = true)
         }
     }
+
+    suspend fun fetchAlbumSongs(albumId: String): Result<List<Song>> {
+        val currentSession = _session.value
+            ?: return Result.failure(IllegalStateException("Connect to Jellyfin before opening an album."))
+        return apiClient.fetchAlbumSongs(currentSession, albumId.removePrefix("jellyfin_album_")).onFailure { error ->
+            _errorMessage.value = error.message ?: "Failed to load tracks for this Jellyfin album."
+        }
+    }
+
     // Compatibility helpers for ViewModel
     fun refreshAll() {
         refreshLibrary()

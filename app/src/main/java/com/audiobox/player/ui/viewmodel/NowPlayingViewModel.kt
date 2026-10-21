@@ -31,6 +31,7 @@ import com.audiobox.player.model.MusicSource
 import com.audiobox.player.data.lyrics.LyricsRepository
 import com.audiobox.player.model.LyricLine
 import com.audiobox.player.player.AudioboxPlayerController
+import com.audiobox.player.player.QueueOperations
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -80,6 +81,7 @@ class NowPlayingViewModel(
 
     private var contentObserver: ContentObserver? = null
     private var debounceJob: Job? = null
+    private var localSongCatalog: List<Song> = emptyList()
 
     private val lyricsRepository = LyricsRepository(application.applicationContext)
     private var lyricsFetchJob: Job? = null
@@ -113,10 +115,16 @@ class NowPlayingViewModel(
         // Amati antrean lagu dan perbarui kategori
         viewModelScope.launch {
             repository.getAllSongs().collect { songs ->
+                localSongCatalog = songs
                 updateCategoriesAndSorted(songs, _selectedSort.value)
-                if (songs.isNotEmpty() && uiState.value.currentSong == null) {
-                    playerController.setQueue(songs, songs.first().id)
-                }
+                playerController.updateSongCatalog(songs + jellyfinSongs.value)
+                playerController.initializeQueueIfEmpty(songs, songs + jellyfinSongs.value)
+            }
+        }
+
+        viewModelScope.launch {
+            jellyfinSongs.collect { songs ->
+                playerController.updateSongCatalog(localSongCatalog + songs)
             }
         }
 
@@ -208,8 +216,28 @@ class NowPlayingViewModel(
     }
 
     fun playSong(song: Song) {
-        playerController.loadSong(song, autoPlay = true)
-        playerController.setNowPlayingExpanded(true)
+        if (song.source == "JELLYFIN") {
+            playJellyfinSelection(jellyfinSongs.value, song)
+        } else if (uiState.value.queue.any { it.source != song.source }) {
+            playSourceSelection(sortedSongs.value, song)
+        } else {
+            playerController.loadSong(song, autoPlay = true)
+            playerController.setNowPlayingExpanded(true)
+        }
+    }
+
+    fun playJellyfinAlbum(album: Album) {
+        val existingSongs = album.songs
+        if (existingSongs.isNotEmpty()) {
+            playJellyfinQueue(existingSongs)
+            return
+        }
+
+        viewModelScope.launch {
+            jellyfinRepository.fetchAlbumSongs(album.id).onSuccess { albumSongs ->
+                if (albumSongs.isNotEmpty()) playJellyfinQueue(albumSongs)
+            }
+        }
     }
 
     fun playLocalAudio(uri: Uri, fileName: String) {
@@ -378,10 +406,28 @@ class NowPlayingViewModel(
     }
 
     fun playJellyfinQueue(songs: List<Song>, startSongId: String? = null) {
-        if (songs.isNotEmpty()) {
-            playerController.setQueue(songs, startSongId ?: songs.first().id, autoPlay = true)
-            playerController.setNowPlayingExpanded(true)
-        }
+        val selected = if (startSongId == null) {
+            songs.firstOrNull()
+        } else {
+            songs.firstOrNull { it.id == startSongId }
+        } ?: return
+        playJellyfinSelection(songs, selected)
+    }
+
+    private fun playJellyfinSelection(candidates: List<Song>, selected: Song) {
+        if (selected.source != "JELLYFIN") return
+        playSourceSelection(candidates, selected)
+    }
+
+    private fun playSourceSelection(candidates: List<Song>, selected: Song) {
+        val selection = QueueOperations.sourceQueueForSelection(
+            candidates = candidates,
+            selected = selected,
+            idOf = { it.id },
+            sourceOf = { it.source }
+        )
+        playerController.setQueue(selection.items, selection.items[selection.index].id, autoPlay = true)
+        playerController.setNowPlayingExpanded(true)
     }
     fun playPlaylist(songs: List<Song>) {
         if (songs.isNotEmpty()) {

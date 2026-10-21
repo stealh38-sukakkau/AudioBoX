@@ -320,6 +320,23 @@ class JellyfinApiClient(private val deviceId: String) {
         return Result.success(all)
     }
 
+    suspend fun fetchAlbumSongs(
+        session: JellyfinSession,
+        albumId: String,
+        pageSize: Int = 200
+    ): Result<List<Song>> {
+        val all = mutableListOf<Song>()
+        var offset = 0
+        while (true) {
+            val page = fetchSongs(session, albumId = albumId, startIndex = offset, limit = pageSize)
+                .getOrElse { return Result.failure(it) }
+            all += page
+            if (page.size < pageSize) break
+            offset += page.size
+        }
+        return Result.success(all)
+    }
+
     suspend fun fetchAllAlbums(session: JellyfinSession, pageSize: Int = 100): Result<List<Album>> {
         val all = mutableListOf<Album>()
         var offset = 0

@@ -3,6 +3,7 @@ package com.audiobox.player.player
 import android.content.ComponentName
 import android.content.Context
 import androidx.core.content.ContextCompat
+import androidx.compose.ui.graphics.Color
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -12,6 +13,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.audiobox.player.model.AudioStreamInfo
+import com.audiobox.player.model.AlbumColorPalette
 import com.audiobox.player.model.LyricLine
 import com.audiobox.player.model.LyricsDisplayMode
 import com.audiobox.player.model.NowPlayingUiState
@@ -51,6 +53,8 @@ class AudioboxPlayerController(
     private var pendingInitialQueue: List<Song>? = null
     private var pendingInitialSongId: String? = null
     private var pendingPlayWhenControllerReady = false
+    private var pendingLibraryQueue: List<Song>? = null
+    private val knownSongs = mutableMapOf<String, Song>()
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -190,18 +194,109 @@ class AudioboxPlayerController(
                 mediaController = controller
                 controller.addListener(playerListener)
 
-                pendingInitialQueue?.let { songs ->
+                val explicitQueue = pendingInitialQueue
+                if (explicitQueue != null) {
                     val shouldStartPlayback = pendingPlayWhenControllerReady
-                    setQueueInternal(controller, songs, pendingInitialSongId)
+                    setQueueInternal(controller, explicitQueue, pendingInitialSongId)
                     pendingInitialQueue = null
                     pendingInitialSongId = null
                     pendingPlayWhenControllerReady = false
                     if (shouldStartPlayback) controller.play()
+                } else if (QueueOperations.shouldInitializeLibraryQueue(controller.mediaItemCount)) {
+                    pendingLibraryQueue?.takeIf { it.isNotEmpty() }?.let { songs ->
+                        setQueueInternal(controller, songs, songs.first().id)
+                    }
                 }
+                pendingLibraryQueue = null
+                syncUiStateFromPlayer(controller)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }, ContextCompat.getMainExecutor(context))
+    }
+
+    /** Updates metadata lookup while keeping the MediaSession as the source of playback truth. */
+    fun updateSongCatalog(songs: List<Song>) {
+        knownSongs.clear()
+        songs.forEach { knownSongs[it.id] = it }
+        mediaController?.let { controller ->
+            if (controller.mediaItemCount > 0) syncUiStateFromPlayer(controller)
+        }
+    }
+
+    /** The library may seed playback only when the service-owned player has no queue. */
+    fun initializeQueueIfEmpty(songs: List<Song>, catalog: List<Song> = songs) {
+        updateSongCatalog(catalog)
+        if (songs.isEmpty()) return
+
+        val controller = mediaController
+        if (controller == null) {
+            pendingLibraryQueue = songs
+            return
+        }
+
+        if (QueueOperations.shouldInitializeLibraryQueue(controller.mediaItemCount)) {
+            setQueueInternal(controller, songs, songs.first().id)
+        } else {
+            syncUiStateFromPlayer(controller)
+        }
+    }
+
+    private fun syncUiStateFromPlayer(controller: MediaController) {
+        val currentIndex = controller.currentMediaItemIndex
+        val playerDuration = controller.duration.takeIf { it > 0L } ?: 0L
+        val queue = (0 until controller.mediaItemCount).map { index ->
+            val mediaItem = controller.getMediaItemAt(index)
+            val song = knownSongs[mediaItem.mediaId] ?: songFromMediaItem(mediaItem)
+            if (index == currentIndex && playerDuration > 0L) song.copy(durationMs = playerDuration) else song
+        }
+        val currentSong = queue.getOrNull(currentIndex)
+        val position = controller.currentPosition.coerceAtLeast(0L)
+        val duration = playerDuration.takeIf { it > 0L } ?: currentSong?.durationMs ?: 0L
+        val repeatMode = when (controller.repeatMode) {
+            Player.REPEAT_MODE_ALL -> RepeatMode.ALL
+            Player.REPEAT_MODE_ONE -> RepeatMode.ONE
+            else -> RepeatMode.OFF
+        }
+        _state.update { state ->
+            state.copy(
+                queue = queue,
+                currentSong = currentSong,
+                isPlaying = controller.isPlaying,
+                currentPositionMs = position,
+                durationMs = duration,
+                progress = if (duration > 0L) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
+                isShuffle = controller.shuffleModeEnabled,
+                repeatMode = repeatMode,
+                currentLyricIndex = calculateActiveLyricIndex(currentSong?.lyrics, position),
+                isFavorite = currentSong?.let { state.favoriteSongIds.contains(it.id) } ?: false,
+                isLyricsSynced = currentSong?.lyrics?.isNotEmpty() == true,
+                isBuffering = controller.playbackState == Player.STATE_BUFFERING
+            )
+        }
+        if (controller.isPlaying) startPositionTracker() else stopPositionTracker()
+    }
+
+    private fun songFromMediaItem(mediaItem: MediaItem): Song {
+        val metadata = mediaItem.mediaMetadata
+        val isJellyfin = mediaItem.mediaId.startsWith("jellyfin_")
+        return Song(
+            id = mediaItem.mediaId,
+            title = metadata.title?.toString() ?: "Unknown Track",
+            artist = metadata.artist?.toString() ?: "Unknown Artist",
+            album = metadata.albumTitle?.toString() ?: "Unknown Album",
+            durationMs = 0L,
+            artworkUrl = metadata.artworkUri?.toString().orEmpty(),
+            audioUrl = mediaItem.localConfiguration?.uri?.toString().orEmpty(),
+            colorPalette = AlbumColorPalette(
+                primary = Color.White,
+                secondary = Color.LightGray,
+                background = Color(0xFF0A0F1D)
+            ),
+            lyrics = emptyList(),
+            source = if (isJellyfin) "JELLYFIN" else "LOCAL",
+            jellyfinItemId = mediaItem.mediaId.takeIf { isJellyfin }?.removePrefix("jellyfin_")
+        )
     }
 
     fun setQueue(songs: List<Song>, initialSongId: String? = null, autoPlay: Boolean = false) {

@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -56,6 +59,7 @@ import com.audiobox.player.ui.theme.DarkSurface
 import com.audiobox.player.ui.theme.TextMuted
 import com.audiobox.player.ui.theme.TextSecondary
 import com.audiobox.player.ui.viewmodel.NowPlayingViewModel
+import kotlin.math.abs
 
 @Composable
 fun AudioboxApp(
@@ -114,6 +118,15 @@ fun AudioboxApp(
     // Apple Music Inspired 3-tab Bottom Navigation
     val navigationItems = listOf(Screen.Home, Screen.Library, Screen.Search, Screen.Settings)
     val effectiveSongs = sortedSongs.ifEmpty { uiState.queue }
+    val density = LocalDensity.current
+
+    fun navigateToTab(screen: Screen) {
+        navController.navigate(screen.route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -135,15 +148,7 @@ fun AudioboxApp(
                             val selected = currentRoute == screen.route
                             NavigationBarItem(
                                 selected = selected,
-                                onClick = {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
+                                onClick = { navigateToTab(screen) },
                                 icon = {
                                     Icon(
                                         imageVector = screen.icon,
@@ -172,7 +177,26 @@ fun AudioboxApp(
             ) {
                 NavHost(
                     navController = navController,
-                    startDestination = Screen.Home.route
+                    startDestination = Screen.Home.route,
+                    modifier = Modifier.pointerInput(currentRoute) {
+                        var horizontalDrag = 0f
+                        detectHorizontalDragGestures(
+                            onHorizontalDrag = { change, dragAmount ->
+                                horizontalDrag += dragAmount
+                                change.consume()
+                            },
+                            onDragEnd = {
+                                val threshold = with(density) { 96.dp.toPx() }
+                                val currentIndex = navigationItems.indexOfFirst { it.route == currentRoute }
+                                if (abs(horizontalDrag) >= threshold && currentIndex >= 0) {
+                                    val nextIndex = if (horizontalDrag < 0f) currentIndex + 1 else currentIndex - 1
+                                    navigationItems.getOrNull(nextIndex)?.let(::navigateToTab)
+                                }
+                                horizontalDrag = 0f
+                            },
+                            onDragCancel = { horizontalDrag = 0f }
+                        )
+                    }
                 ) {
                     // 1. Apple Music Inspired Home Screen
                     composable(Screen.Home.route) {
@@ -185,7 +209,11 @@ fun AudioboxApp(
                             isPlaying = uiState.isPlaying,
                             onSongClick = { viewModel.playSong(it) },
                             onAlbumClick = { album ->
-                                album.songs.firstOrNull()?.let { viewModel.playSong(it) }
+                                if (album.id.startsWith("jellyfin_album_")) {
+                                    viewModel.playJellyfinAlbum(album)
+                                } else {
+                                    album.songs.firstOrNull()?.let { viewModel.playSong(it) }
+                                }
                             },
                             onOpenAudioSettings = { showHomeOutputSheet = true },
                             onNavigateToLibrary = {

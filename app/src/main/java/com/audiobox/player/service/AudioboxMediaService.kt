@@ -61,7 +61,10 @@ class AudioboxMediaService : MediaSessionService() {
 
         player = exoPlayer
 
-        val sessionActivityIntent = Intent(this, MainActivity::class.java)
+        val sessionActivityIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(MainActivity.EXTRA_OPEN_NOW_PLAYING, true)
+        }
         val sessionActivityPendingIntent = PendingIntent.getActivity(
             this,
             0,

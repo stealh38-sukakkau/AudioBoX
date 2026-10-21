@@ -3,6 +3,7 @@ package com.audiobox.player
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import java.util.Locale
 import androidx.activity.compose.setContent
@@ -17,6 +18,12 @@ import com.audiobox.player.ui.theme.AudioboxTheme
 import com.audiobox.player.ui.viewmodel.NowPlayingViewModel
 
 class MainActivity : ComponentActivity() {
+    private var playbackViewModel: NowPlayingViewModel? = null
+
+    companion object {
+        const val EXTRA_OPEN_NOW_PLAYING = "com.audiobox.player.extra.OPEN_NOW_PLAYING"
+    }
+
     override fun attachBaseContext(newBase: Context) {
         val language = com.audiobox.player.data.UserPreferences(newBase).language.value
         val tag = when (language) {
@@ -47,12 +54,27 @@ class MainActivity : ComponentActivity() {
                 }
             }
         )[NowPlayingViewModel::class.java]
+        playbackViewModel = viewModel
+        consumeNotificationIntent(intent)
 
         setContent {
             val themeChoice by viewModel.preferences.theme.collectAsStateWithLifecycle()
             AudioboxTheme(themeChoice) {
                 AudioboxApp(viewModel = viewModel)
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        consumeNotificationIntent(intent)
+    }
+
+    private fun consumeNotificationIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_NOW_PLAYING, false) == true) {
+            intent.removeExtra(EXTRA_OPEN_NOW_PLAYING)
+            playbackViewModel?.setNowPlayingExpanded(true)
         }
     }
 }

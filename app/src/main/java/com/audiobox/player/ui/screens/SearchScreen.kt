@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -144,7 +145,7 @@ fun SearchScreen(
                 }
             },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = DarkSurfaceElevated,
                 unfocusedContainerColor = DarkSurfaceElevated,
@@ -159,7 +160,7 @@ fun SearchScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Apple Pill Category Chips
+        // Quick filters remain easy to reach on narrow phones.
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -172,15 +173,19 @@ fun SearchScreen(
                         1.dp,
                         if (isSelected) AudioboxAccent else DarkCardBorder
                     ),
-                    modifier = Modifier.clickable { selectedFilter = filter }
+                    modifier = Modifier
+                        .height(48.dp)
+                        .clickable { selectedFilter = filter }
                 ) {
-                    Text(
-                        text = filter.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) Color.White else TextSecondary,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                    )
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxHeight()) {
+                        Text(
+                            text = filter.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) Color.White else TextSecondary,
+                            modifier = Modifier.padding(horizontal = 14.dp)
+                        )
+                    }
                 }
             }
         }
@@ -203,7 +208,7 @@ fun SearchScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "No results found for \"$searchQuery\"",
+                        text = if (searchQuery.isBlank()) "Your library is empty" else "No matches for \"$searchQuery\"",
                         color = TextMuted,
                         style = MaterialTheme.typography.bodyLarge
                     )
@@ -219,9 +224,11 @@ fun SearchScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(DarkSurfaceElevated.copy(alpha = 0.45f))
+                            .border(1.dp, DarkCardBorder, RoundedCornerShape(14.dp))
                             .combinedClickable(onClick = { onSongClick(song) }, onLongClick = { showTrackMenu = true })
-                            .padding(8.dp),
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (song.artworkUrl.isNotBlank()) {

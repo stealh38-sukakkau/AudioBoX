@@ -59,13 +59,13 @@ fun MiniPlayer(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp)
             .shadow(
-                elevation = 20.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = Color.Black.copy(alpha = 0.7f)
+                elevation = 12.dp,
+                shape = RoundedCornerShape(18.dp),
+                spotColor = Color.Black.copy(alpha = 0.4f)
             )
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(DarkSurfaceElevated.copy(alpha = 0.97f))
-            .border(1.dp, DarkCardBorder, RoundedCornerShape(16.dp))
+            .border(1.dp, DarkCardBorder, RoundedCornerShape(18.dp))
             .clickable(onClick = onExpand)
     ) {
         Column {
@@ -135,7 +135,7 @@ fun MiniPlayer(
                 ) {
                     IconButton(
                         onClick = onTogglePlayPause,
-                        modifier = Modifier.size(38.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
@@ -146,7 +146,7 @@ fun MiniPlayer(
                     }
                     IconButton(
                         onClick = onSkipNext,
-                        modifier = Modifier.size(38.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.SkipNext,
@@ -163,7 +163,7 @@ fun MiniPlayer(
                 progress = { progress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(2.5.dp),
+                    .height(3.dp),
                 color = AudioboxAccent,
                 trackColor = Color.White.copy(alpha = 0.08f)
             )

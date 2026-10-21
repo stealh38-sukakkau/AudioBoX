@@ -240,7 +240,7 @@ fun QueueSheet(
                             if (index > 0) {
                                 IconButton(
                                     onClick = { onMoveItem(index, index - 1) },
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(40.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.KeyboardArrowUp,
@@ -254,7 +254,7 @@ fun QueueSheet(
                             if (index < queue.lastIndex) {
                                 IconButton(
                                     onClick = { onMoveItem(index, index + 1) },
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(40.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.KeyboardArrowDown,
@@ -268,7 +268,7 @@ fun QueueSheet(
                             // Remove from queue
                             IconButton(
                                 onClick = { onRemoveItem(index) },
-                                modifier = Modifier.size(28.dp)
+                                modifier = Modifier.size(40.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.DeleteOutline,

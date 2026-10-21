@@ -1,9 +1,13 @@
 package com.audiobox.player.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,10 +16,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,13 +40,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,6 +71,8 @@ import com.audiobox.player.ui.components.SongProgressBar
 import com.audiobox.player.ui.theme.AudioboxAccent
 import com.audiobox.player.ui.theme.AudioboxGold
 import com.audiobox.player.ui.theme.DarkCardBorder
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 @Composable
 fun NowPlayingScreen(
@@ -83,18 +98,76 @@ fun NowPlayingScreen(
     val song = state.currentSong ?: return
     val isBitPerfect = state.audioOutputState.bitPerfectStatus == BitPerfectStatus.REQUESTED
     val isHiRes = state.audioStreamInfo.isHiRes
+    val density = LocalDensity.current
+    val animationScope = rememberCoroutineScope()
+    var playerOffsetY by remember { mutableFloatStateOf(0f) }
+    var playerHeightPx by remember { mutableFloatStateOf(0f) }
+    var settleAnimation by remember { mutableStateOf<Job?>(null) }
     var showOutputSheet by remember { mutableStateOf(false) }
     var showQueueSheet by remember { mutableStateOf(false) }
 
     DynamicBackground(
         palette = song.colorPalette.takeIf { dynamicColors },
-        modifier = modifier.fillMaxSize()
+        modifier = modifier
+            .fillMaxSize()
+            .onSizeChanged { playerHeightPx = it.height.toFloat() }
+            .graphicsLayer {
+                val dragProgress = if (playerHeightPx > 0f) {
+                    (playerOffsetY / playerHeightPx).coerceIn(0f, 1f)
+                } else 0f
+                translationY = playerOffsetY
+                scaleX = 1f - dragProgress * 0.08f
+                scaleY = 1f - dragProgress * 0.08f
+                alpha = 1f - dragProgress * 0.12f
+                transformOrigin = TransformOrigin(0.5f, 0f)
+            }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .pointerInput(onCollapse) {
+                    detectVerticalDragGestures(
+                        onDragStart = {
+                            settleAnimation?.cancel()
+                            settleAnimation = null
+                        },
+                        onVerticalDrag = { change, dragAmount ->
+                            playerOffsetY = (playerOffsetY + dragAmount).coerceIn(0f, playerHeightPx)
+                            change.consume()
+                        },
+                        onDragEnd = {
+                            val dismissThreshold = minOf(
+                                playerHeightPx * 0.45f,
+                                maxOf(with(density) { 96.dp.toPx() }, playerHeightPx * 0.22f)
+                            )
+                            val shouldCollapse = playerOffsetY >= dismissThreshold
+                            val targetOffset = if (shouldCollapse) playerHeightPx else 0f
+                            settleAnimation = animationScope.launch {
+                                animate(
+                                    initialValue = playerOffsetY,
+                                    targetValue = targetOffset,
+                                    animationSpec = tween(
+                                        durationMillis = if (shouldCollapse) 180 else 240,
+                                        easing = FastOutSlowInEasing
+                                    )
+                                ) { value, _ -> playerOffsetY = value }
+                                if (shouldCollapse) onCollapse()
+                            }
+                        },
+                        onDragCancel = {
+                            settleAnimation = animationScope.launch {
+                                animate(
+                                    initialValue = playerOffsetY,
+                                    targetValue = 0f,
+                                    animationSpec = tween(180, easing = FastOutSlowInEasing)
+                                ) { value, _ -> playerOffsetY = value }
+                            }
+                        }
+                    )
+                }
                 .statusBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 12.dp),
+                .navigationBarsPadding()
+                .padding(horizontal = 22.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -120,7 +193,7 @@ fun NowPlayingScreen(
                     state.audioStreamInfo.codecName.contains("FLAC", ignoreCase = true) -> "LOSSLESS"
                     state.audioOutputState.isUsbDac -> "USB DAC"
                     state.currentSong?.source == "JELLYFIN" -> "JELLYFIN STREAM"
-                    else -> "AUDIOBOX"
+                    else -> "AudioBoX"
                 }
                 val badgeColor = when {
                     isBitPerfect -> Color(0xFF00E676)
@@ -178,8 +251,9 @@ fun NowPlayingScreen(
                             artworkUrl = song.artworkUrl,
                             isPlaying = state.isPlaying,
                             modifier = Modifier
-                                .fillMaxWidth(0.88f)
-                                .padding(vertical = 12.dp)
+                                .fillMaxHeight(0.9f)
+                                .padding(vertical = 8.dp)
+                                .aspectRatio(1f)
                         )
                     }
 
@@ -258,6 +332,16 @@ fun NowPlayingScreen(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+
+                if (song.album.isNotBlank()) {
+                    Text(
+                        text = song.album,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.58f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 

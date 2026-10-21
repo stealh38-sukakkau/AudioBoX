@@ -183,7 +183,7 @@ fun LyricsView(
                 val isActive = index == currentLyricIndex
 
                 val textColor by animateColorAsState(
-                    targetValue = if (isActive) Color.White else Color.White.copy(alpha = 0.35f),
+                    targetValue = if (isActive) Color.White else Color.White.copy(alpha = 0.58f),
                     animationSpec = tween(durationMillis = 300),
                     label = "lyricTextColor"
                 )

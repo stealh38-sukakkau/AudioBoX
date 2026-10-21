@@ -662,10 +662,11 @@ private fun SongsTab(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (isCurrentSong) AudioboxAccent.copy(alpha = 0.12f) else Color.Transparent)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (isCurrentSong) AudioboxAccent.copy(alpha = 0.12f) else DarkSurfaceElevated.copy(alpha = 0.45f))
+                    .border(1.dp, if (isCurrentSong) AudioboxAccent.copy(alpha = 0.28f) else DarkCardBorder, RoundedCornerShape(14.dp))
                     .combinedClickable(onClick = { onSongClick(song) }, onLongClick = { showTrackMenu = true })
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 SongArtwork(artworkUrl = song.artworkUrl, title = song.title, size = 48)

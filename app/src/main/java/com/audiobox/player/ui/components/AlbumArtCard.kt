@@ -38,9 +38,9 @@ fun AlbumArtCard(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 18.dp
 ) {
-    // Apple Music signature dynamic scale on play/pause
+    // Keep artwork visually steady while giving playback state a subtle response.
     val scale by animateFloatAsState(
-        targetValue = if (isPlaying) 1.0f else 0.86f,
+        targetValue = if (isPlaying) 1.0f else 0.97f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioLowBouncy,
             stiffness = Spring.StiffnessMediumLow
@@ -49,7 +49,7 @@ fun AlbumArtCard(
     )
 
     val shadowElevation by animateDpAsState(
-        targetValue = if (isPlaying) 28.dp else 10.dp,
+        targetValue = if (isPlaying) 22.dp else 12.dp,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "albumArtShadow"
     )
